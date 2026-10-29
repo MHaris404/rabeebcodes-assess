@@ -1,0 +1,178 @@
+{
+  "measuredAt": "2026-10-29T17:34:47.507Z",
+  "environment": {
+    "node": "v24.13.0",
+    "cpu": "Apple M5",
+    "logicalCpus": 10,
+    "memoryGiB": 16,
+    "database": "PostgreSQL 15, local loopback",
+    "apiReplicas": 1,
+    "poolLimit": 10
+  },
+  "initialDataset": {
+    "users": 50,
+    "tickets": 10000,
+    "messages": 50000,
+    "activity": 10000
+  },
+  "sessions": "Pre-provisioned valid database sessions; login throughput excluded",
+  "concurrentUsers": 50,
+  "durationSeconds": 300,
+  "throughputPerSecond": 1287,
+  "reads": {
+    "requests": 366928,
+    "p50Ms": 38,
+    "p95Ms": 55,
+    "p99Ms": 75
+  },
+  "writes": {
+    "requests": 19300,
+    "p50Ms": 44,
+    "p95Ms": 65,
+    "p99Ms": 94
+  },
+  "statusCodes": {
+    "200": 366928,
+    "201": 19300
+  },
+  "unexpectedErrorRate": 0,
+  "queryPlan": [
+    {
+      "QUERY PLAN": [
+        {
+          "Plan": {
+            "Node Type": "Limit",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 49.52,
+            "Total Cost": 49.55,
+            "Plan Rows": 14,
+            "Plan Width": 442,
+            "Actual Startup Time": 0.123,
+            "Actual Total Time": 0.124,
+            "Actual Rows": 20,
+            "Actual Loops": 1,
+            "Shared Hit Blocks": 195,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 49.52,
+                "Total Cost": 49.55,
+                "Plan Rows": 14,
+                "Plan Width": 442,
+                "Actual Startup Time": 0.122,
+                "Actual Total Time": 0.123,
+                "Actual Rows": 20,
+                "Actual Loops": 1,
+                "Sort Key": [
+                  "\"createdAt\" DESC",
+                  "id DESC"
+                ],
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 28,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 195,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "Ticket",
+                    "Alias": "Ticket",
+                    "Startup Cost": 4.39,
+                    "Total Cost": 49.25,
+                    "Plan Rows": 14,
+                    "Plan Width": 442,
+                    "Actual Startup Time": 0.023,
+                    "Actual Total Time": 0.101,
+                    "Actual Rows": 200,
+                    "Actual Loops": 1,
+                    "Recheck Cond": "(\"customerId\" = '1c96655a-2934-45f3-81a0-b6a064d5c16c'::uuid)",
+                    "Rows Removed by Index Recheck": 0,
+                    "Exact Heap Blocks": 192,
+                    "Lossy Heap Blocks": 0,
+                    "Shared Hit Blocks": 195,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Index Name": "Ticket_customerId_createdAt_id_idx",
+                        "Startup Cost": 0,
+                        "Total Cost": 4.39,
+                        "Plan Rows": 14,
+                        "Plan Width": 0,
+                        "Actual Startup Time": 0.013,
+                        "Actual Total Time": 0.013,
+                        "Actual Rows": 200,
+                        "Actual Loops": 1,
+                        "Index Cond": "(\"customerId\" = '1c96655a-2934-45f3-81a0-b6a064d5c16c'::uuid)",
+                        "Shared Hit Blocks": 3,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Planning": {
+            "Shared Hit Blocks": 33,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.038,
+          "Triggers": [],
+          "Execution Time": 0.13
+        }
+      ]
+    }
+  ]
+}

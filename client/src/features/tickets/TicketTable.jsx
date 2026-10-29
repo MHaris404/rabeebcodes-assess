@@ -1,0 +1,7 @@
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, MessageSquare } from 'lucide-react';
+import { Avatar, Badge, Empty, relative } from '../../components/ui';
+export default function TicketTable({ tickets, compact = false }) {
+  if (!tickets?.length) return <Empty/>;
+  return <div className="table-scroll"><table className="ticket-table"><thead><tr><th>Ticket</th><th>Status</th><th>Priority</th>{!compact && <th>Customer</th>}<th>Assignee</th><th>Updated</th><th><span className="sr-only">Open ticket</span></th></tr></thead><tbody>{tickets.map(t => <tr key={t.id}><td><Link className="ticket-subject" to={`/tickets/${t.id}`}><span className="ticket-number">{t.ticketNumber}</span><strong>{t.subject}</strong><span className="ticket-category">{t.category}</span></Link></td><td><Badge value={t.status}/></td><td><Badge value={t.priority}/></td>{!compact && <td><div className="person-cell"><Avatar name={t.customer.name} size="tiny"/><span>{t.customer.name}</span></div></td>}<td>{t.assignedAgent ? <div className="person-cell"><Avatar name={t.assignedAgent.name} size="tiny" color="mint"/><span>{compact ? t.assignedAgent.name.split(' ')[0] : t.assignedAgent.name}</span></div> : <span className="unassigned">Unassigned</span>}</td><td className="nowrap muted">{relative(t.updatedAt)}</td><td><Link to={`/tickets/${t.id}`} className="table-arrow" aria-label={`Open ${t.ticketNumber}`}><ArrowUpRight size={17}/></Link></td></tr>)}</tbody></table></div>;
+}
