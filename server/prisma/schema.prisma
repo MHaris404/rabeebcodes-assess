@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  Admin
+  Agent
+  Customer
+}
+enum Category {
+  Technical
+  Billing
+  General
+  Other
+}
+enum Priority {
+  Low
+  Medium
+  High
+  Urgent
+}
+enum Status {
+  Open
+  InProgress @map("In Progress")
+  Resolved
+  Closed
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(Customer)
+  createdAt DateTime @default(now())
+  sessions Session[]
+  ownedTickets Ticket[] @relation("Owner")
+  assignedTickets Ticket[] @relation("Assignee")
+  messages Message[]
+  activities Activity[]
+  idempotencyRecords IdempotencyRecord[]
+}
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  csrfToken String
+  expiresAt DateTime
+  revokedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+model Ticket {
+  id String @id @default(uuid()) @db.Uuid
+  ticketNumber Int @unique @default(autoincrement())
+  subject String @db.VarChar(200)
+  description String
+  category Category
+  priority Priority @default(Medium)
+  status Status @default(Open)
+  customerId String @db.Uuid
+  assignedAgentId String? @db.Uuid
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  customer User @relation("Owner", fields: [customerId], references: [id])
+  assignedAgent User? @relation("Assignee", fields: [assignedAgentId], references: [id])
+  messages Message[]
+  activities Activity[]
+  @@index([customerId, createdAt, id])
+  @@index([assignedAgentId, createdAt, id])
+  @@index([status, priority, createdAt])
+}
+model Message {
+  id String @id @default(uuid()) @db.Uuid
+  ticketId String @db.Uuid
+  authorId String @db.Uuid
+  body String
+  createdAt DateTime @default(now())
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+  @@index([ticketId, createdAt, id])
+}
+model Activity {
+  id String @id @default(uuid()) @db.Uuid
+  ticketId String @db.Uuid
+  actorId String @db.Uuid
+  action String
+  metadata Json @default("{}")
+  createdAt DateTime @default(now())
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id])
+  @@index([ticketId, createdAt, id])
+}
+model IdempotencyRecord {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  operation String
+  key String @db.VarChar(128)
+  requestHash String
+  resourceId String @db.Uuid
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, operation, key])
+  @@index([expiresAt])
+}

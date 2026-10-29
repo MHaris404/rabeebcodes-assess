@@ -1,0 +1,94 @@
+import { beforeEach, afterAll, it, expect } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { createApp } from '../src/app.js';
+import { reset, account } from './helpers.js';
+const db = new PrismaClient();
+const app = createApp({ db });
+beforeEach(() => reset(db));
+afterAll(() => db.$disconnect());
+const payload = { subject: 'Billing invoice is incorrect', description: 'Invoice contains an extra seat.', category: 'Billing', priority: 'High' };
+const create = (a, key = crypto.randomUUID()) => a.send('post', '/api/tickets', payload, { 'Idempotency-Key': key });
+it('enforces object-level access across reads, updates, messages and deletes', async () => {
+  const owner = await account(db, app, 'Customer', 'owner');
+  const stranger = await account(db, app, 'Customer', 'stranger');
+  const agent = await account(db, app, 'Agent');
+  const made = await create(owner);
+  expect(made.status).toBe(201);
+  const id = made.body.data.id;
+  for (const other of [stranger, agent]) {
+    for (const path of [`/api/tickets/${id}`, `/api/tickets/${id}/messages`, `/api/tickets/${id}/activity`]) expect((await other.send('get', path)).status).toBe(404);
+    expect((await other.send('patch', `/api/tickets/${id}`, { subject: 'Hacked', expectedVersion: 1 })).status).toBe(404);
+    expect((await other.send('delete', `/api/tickets/${id}`, undefined, { 'If-Match': '1' })).status).toBe(404);
+    expect((await other.send('post', `/api/tickets/${id}/messages`, { body: 'Hacked' }, { 'Idempotency-Key': crypto.randomUUID() })).status).toBe(404);
+  }
+  expect((await stranger.send('get', '/api/tickets')).body.pagination.total).toBe(0);
+});
+it('completes customer, Admin assignment, Agent reply and resolution workflow', async () => {
+  const customer = await account(db, app);
+  const admin = await account(db, app, 'Admin');
+  const agent = await account(db, app, 'Agent');
+  const { body: { data: ticket } } = await create(customer);
+  expect((await customer.send('patch', `/api/tickets/${ticket.id}/status`, { status: 'Resolved', expectedVersion: 1 })).status).toBe(403);
+  expect((await agent.send('patch', `/api/tickets/${ticket.id}/assign`, { assignedAgentId: agent.user.id, expectedVersion: 1 })).status).toBe(403);
+  const assigned = await admin.send('patch', `/api/tickets/${ticket.id}/assign`, { assignedAgentId: agent.user.id, expectedVersion: 1 });
+  expect(assigned.status).toBe(200);
+  expect(assigned.body.data.version).toBe(2);
+  const reply = await agent.send('post', `/api/tickets/${ticket.id}/messages`, { body: 'We have corrected your invoice.' }, { 'Idempotency-Key': crypto.randomUUID() });
+  expect(reply.status).toBe(201);
+  expect((await customer.send('get', `/api/tickets/${ticket.id}/messages`)).body.data[0].body).toBe('We have corrected your invoice.');
+  const resolved = await agent.send('patch', `/api/tickets/${ticket.id}/status`, { status: 'Resolved', expectedVersion: 2 });
+  expect(resolved.body.data).toMatchObject({ status: 'Resolved', version: 3 });
+  const log = await admin.send('get', `/api/tickets/${ticket.id}/activity`);
+  expect(log.body.data.map(a => a.action)).toEqual(['ticket.created', 'ticket.assigned', 'message.created', 'ticket.status_changed']);
+  expect((await customer.send('patch', `/api/tickets/${ticket.id}`, { subject: 'Changed', expectedVersion: 3 })).status).toBe(403);
+});
+it('prevents lost updates and a stale delete', async () => {
+  const a = await account(db, app, 'Admin');
+  const { body: { data: t } } = await create(a);
+  const results = await Promise.all(['First edit', 'Second edit'].map(subject => a.send('patch', `/api/tickets/${t.id}`, { subject, expectedVersion: 1 })));
+  expect(results.map(r => r.status).sort()).toEqual([200, 409]);
+  expect((await a.send('delete', `/api/tickets/${t.id}`, undefined, { 'If-Match': '1' })).status).toBe(409);
+  expect(await db.ticket.count()).toBe(1);
+});
+it('deduplicates concurrent creates and replies, and rejects a changed body', async () => {
+  const a = await account(db, app);
+  const key = crypto.randomUUID();
+  const results = await Promise.all([create(a, key), create(a, key)]);
+  expect(results.map(r => r.status)).toEqual([201, 201]);
+  expect(results[0].body.data.id).toBe(results[1].body.data.id);
+  expect(await db.ticket.count()).toBe(1);
+  expect((await a.send('post', '/api/tickets', { ...payload, subject: 'Other issue' }, { 'Idempotency-Key': key })).status).toBe(409);
+  const path = `/api/tickets/${results[0].body.data.id}/messages`;
+  const replyKey = crypto.randomUUID();
+  const replies = await Promise.all([1, 2].map(() => a.send('post', path, { body: 'Please help' }, { 'Idempotency-Key': replyKey })));
+  expect(replies.map(r => r.status)).toEqual([201, 201]);
+  expect(await db.message.count()).toBe(1);
+  expect(await db.activity.count()).toBe(2);
+});
+it('validates privilege fields, assignment targets, empty replies, and filters', async () => {
+  const a = await account(db, app);
+  const admin = await account(db, app, 'Admin');
+  const agent = await account(db, app, 'Agent');
+  const { body: { data: t } } = await create(a);
+  expect((await a.send('patch', `/api/tickets/${t.id}`, { status: 'Closed', expectedVersion: 1 })).status).toBe(400);
+  expect((await admin.send('patch', `/api/tickets/${t.id}/assign`, { assignedAgentId: a.user.id, expectedVersion: 1 })).status).toBe(400);
+  expect((await a.send('post', `/api/tickets/${t.id}/messages`, { body: '  ' }, { 'Idempotency-Key': crypto.randomUUID() })).status).toBe(400);
+  expect((await a.send('get', '/api/tickets?search=invoice&priority=High&pageSize=1')).body.pagination.total).toBe(1);
+  expect((await a.send('get', '/api/tickets?priority=Low')).body.data).toHaveLength(0);
+  expect((await a.send('get', '/api/tickets?pageSize=1000')).status).toBe(400);
+  const createdByAgent = await create(agent);
+  expect(createdByAgent.body.data.assignedAgentId).toBe(agent.user.id);
+  expect((await agent.send('delete', `/api/tickets/${createdByAgent.body.data.id}`, undefined, { 'If-Match': '1' })).status).toBe(403);
+});
+it('paginates conversation history without losing tied timestamps', async () => {
+  const a = await account(db, app);
+  const { body: { data: t } } = await create(a);
+  await db.message.createMany({ data: ['One', 'Two', 'Three'].map(body => ({ ticketId: t.id, authorId: a.user.id, body, createdAt: new Date('2026-01-01') })) });
+  const first = await a.send('get', `/api/tickets/${t.id}/messages?pageSize=2`);
+  expect(first.body.data).toHaveLength(2);
+  expect(first.body.pagination.hasMore).toBe(true);
+  const next = await a.send('get', `/api/tickets/${t.id}/messages?pageSize=2&cursor=${first.body.pagination.nextCursor}`);
+  expect(next.body.data).toHaveLength(1);
+  expect(new Set([...first.body.data, ...next.body.data].map(m => m.id)).size).toBe(3);
+  expect((await a.send('get', `/api/tickets/${t.id}/messages?cursor=garbage`)).status).toBe(400);
+});
