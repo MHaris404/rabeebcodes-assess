@@ -20,3 +20,5 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 
 .app-body,.main-content{min-width:0}.app-layout{width:100%}
+
+.form-fields{display:flex;flex-direction:column;gap:24px;border:0;padding:0;margin:0;min-width:0}.form-fields:disabled input,.form-fields:disabled textarea,.reply-form textarea:disabled{background:#f5f7f8;color:#83938d}.conflict-review{padding:16px;background:#fff8e9;border:1px solid #eadcb9;border-radius:7px;font-size:12px}.conflict-review>p{margin:6px 0 12px;color:#8f805e}.conflict-review>div{margin:10px 0;padding:10px;background:#ffffffa0;border-radius:4px;max-height:180px;overflow:auto;overflow-wrap:anywhere}.conflict-review>div>span{font-weight:600;text-transform:capitalize}.conflict-review>div>p{font-size:11px;margin-top:5px}.conflict-review small{display:block;margin-top:9px;color:#958974}.retry-note{font-size:11px;color:#8b805b;margin-bottom:13px;padding:10px;background:#fffaed;border-radius:5px}

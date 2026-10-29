@@ -62,4 +62,15 @@ describe('Authentication boundary', () => {
     for (let i = 0; i < 31; i++) last = await request(limited).post('/api/auth/login').set('Origin', 'http://localhost:5173').send({ email: a.user.email, password: 'WrongPassword!' });
     expect(last.status).toBe(429);
   });
+  it('counts successful public registrations against a separate creation limit', async () => {
+    const previous = process.env.NODE_ENV; process.env.NODE_ENV = 'development';
+    const limited = createApp({ db }); process.env.NODE_ENV = previous;
+    for (let i = 0; i < 5; i++) {
+      const res = await request(limited).post('/api/auth/register').set('Origin', 'http://localhost:5173').send({ name: `New Customer ${i}`, email: `new${i}@example.com`, password: 'SafeDemoPassword123!' });
+      expect(res.status).toBe(201);
+    }
+    const sixth = await request(limited).post('/api/auth/register').set('Origin', 'http://localhost:5173').send({ name: 'Sixth account', email: 'sixth@example.com', password: 'SafeDemoPassword123!' });
+    expect(sixth.status).toBe(429);
+    expect(await db.user.count()).toBe(5);
+  });
 });

@@ -2,7 +2,7 @@ services:
   - type: web
     name: supportdesk-api
     runtime: node
-    buildCommand: npm ci
+    buildCommand: npm ci --include=dev
     preDeployCommand: npm run db:migrate
     startCommand: npm run start -w server
     healthCheckPath: /api/health/ready

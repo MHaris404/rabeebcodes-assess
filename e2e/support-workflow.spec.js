@@ -45,5 +45,70 @@ test('layout is usable and unauthenticated routes return to login', async ({ pag
   await expect(page.locator('.recharts-pie-sector').first()).toBeVisible();
   await expect(page.locator('.ticket-table tbody tr').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: `docs/screenshots/${testInfo.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: `docs/screenshots/${testInfo.project.name}.png`, fullPage: testInfo.project.name !== 'mobile', scale: 'css' });
+});
+async function createForTest(page, subject) {
+  const csrf = (await (await page.request.get('/api/auth/csrf')).json()).data.csrfToken;
+  const headers = { Origin: 'http://localhost:5173', 'X-CSRF-Token': csrf, 'Idempotency-Key': crypto.randomUUID() };
+  const response = await page.request.post('/api/tickets', { headers, data: { subject, description: 'Original description', category: 'General' } });
+  expect(response.status()).toBe(201);
+  return { ticket: (await response.json()).data, headers };
+}
+test('a refreshed editor requires explicit reconciliation and preserves unrelated changes', async ({ page }) => {
+  await login(page, 'admin@supportdesk.demo');
+  const { ticket, headers } = await createForTest(page, `Concurrent edit ${Date.now()}`);
+  await page.goto(`/tickets/${ticket.id}`);
+  await page.getByRole('button', { name: 'Edit ticket', exact: true }).click();
+  await page.getByLabel('Subject', { exact: true }).fill('My subject update');
+  const other = await page.request.patch(`/api/tickets/${ticket.id}`, { headers, data: { description: 'Description updated by a colleague', expectedVersion: 1 } });
+  expect(other.status()).toBe(200);
+  await page.clock.install(); await page.clock.fastForward(21000);
+  const refreshed = page.waitForResponse(r => r.url().endsWith(`/api/tickets/${ticket.id}`) && r.request().method() === 'GET');
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  await refreshed;
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('changed');
+  await expect(page.getByLabel('Subject', { exact: true })).toHaveValue('My subject update');
+  await page.getByRole('button', { name: 'Keep my edits on latest version', exact: true }).click();
+  await expect(page.getByLabel('Description', { exact: true })).toHaveValue('Description updated by a colleague');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const result = (await (await page.request.get(`/api/tickets/${ticket.id}`)).json()).data;
+  expect(result.subject).toBe('My subject update'); expect(result.description).toBe('Description updated by a colleague');
+});
+test('a reply with a lost response retries the original payload without duplication', async ({ page }) => {
+  await login(page, 'customer@supportdesk.demo');
+  const { ticket } = await createForTest(page, `Uncertain reply ${Date.now()}`);
+  await page.goto(`/tickets/${ticket.id}`);
+  let dropped = false;
+  await page.route(`**/api/tickets/${ticket.id}/messages`, async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch();
+    if (!dropped) { dropped = true; return route.abort('failed'); }
+    return route.fulfill({ response });
+  });
+  const draft = page.getByLabel('Your reply', { exact: true });
+  await draft.fill('This reply must arrive once.');
+  await page.getByRole('button', { name: 'Send reply', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Cannot reach');
+  await expect(draft).toBeDisabled();
+  await expect(draft).toHaveValue('This reply must arrive once.');
+  await page.getByRole('button', { name: 'Retry reply', exact: true }).click();
+  await expect(page.getByText('This reply must arrive once.', { exact: true })).toHaveCount(1);
+  await expect(draft).toHaveValue('');
+  const saved = (await (await page.request.get(`/api/tickets/${ticket.id}/messages`)).json()).data;
+  expect(saved).toHaveLength(1);
+});
+test('delete confirmation keeps the revision originally confirmed', async ({ page }) => {
+  await login(page, 'admin@supportdesk.demo');
+  const { ticket, headers } = await createForTest(page, `Stale confirmation ${Date.now()}`);
+  await page.goto(`/tickets/${ticket.id}`);
+  await page.getByRole('button', { name: 'Delete ticket', exact: true }).click();
+  await page.request.patch(`/api/tickets/${ticket.id}`, { headers, data: { subject: 'Newer revision', expectedVersion: 1 } });
+  await page.clock.install(); await page.clock.fastForward(21000);
+  const refreshed = page.waitForResponse(r => r.url().endsWith(`/api/tickets/${ticket.id}`) && r.request().method() === 'GET');
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange'))); await refreshed;
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete ticket', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('changed');
+  expect((await page.request.get(`/api/tickets/${ticket.id}`)).status()).toBe(200);
 });

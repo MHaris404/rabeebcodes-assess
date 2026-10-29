@@ -12,3 +12,15 @@
 - Ruling: Preserve the session query observer while clearing private caches; clearing the complete query client stranded login observers. Browser regression tests now pass.
 - Ruling: Count failed authentication attempts rather than successful sign-ins in the process-local limiter; repeated browser verification exposed false-positive throttling. Shared production throttling is still an infrastructure prerequisite.
 - Initial benchmark: 50 users, 300 seconds, 10k tickets/50k initial messages, read p95 55ms/write p95 65ms, zero errors on Prisma 6.19.3; rerunning on pinned final dependencies before final report.
+- Final dependency cleanup: only matching Prisma CLI/Client 6.12.0 installed; no global CLI. `npm prune --ignore-scripts --no-audit` and `npm run db:generate -w server` pass.
+- Independent final review completed read-only with three Important findings; all fixed in one pass. Editor/confirmation snapshot, immutable unresolved submission, and registration limiter regressions were observed failing before fixes; final whole suites pass.
+- Final: fixed background-refresh overwrite and stale deletion — browser tests capture version/reconcile dirty fields and preserve newer records, RED→GREEN.
+- Final: fixed uncertain reply delivery — browser drops the committed response and retries the same payload/key, verifies one persisted message, RED→GREEN. Create uses the same immutable-attempt policy.
+- Final: fixed registration throttle bypass — successful-registration limit test RED→GREEN.
+- Final verification: `npm test` → 20 server + 4 client pass; `npm run test:e2e` → 10/10 pass; `npm run build` → production bundle pass; `npm audit --audit-level=moderate` → zero vulnerabilities; clean temporary checkout `npm ci` + build pass.
+- Final benchmark on Prisma 6.12.0: 300s, 50 concurrent sessions, 539,346 requests, 1,798 req/s, read p95 38ms/write p95 44ms, zero unexpected errors. See raw evidence for environment and query plan. This is local measured capacity, not a hosted SLA.
+- Final: minor (deferred): Agent assignment/filter selectors retrieve first 100 Agents; add server-backed search for larger teams.
+- Final: minor (deferred): logout on an already-expired session can retain local identity until another auth/profile check; backend access remains denied.
+- Final: Ruling: In-flight reads authorized at request authentication may complete after concurrent role change — normal request-boundary authorization; stricter instantaneous revocation would require additional locking/snapshot policy and remains outside the agreed contract.
+- Final: Ruling: Hosting, shared rate limits, backup restore, multi-replica operation, and forced-drain fault injection remain explicitly unverified — no infrastructure destination was provided; claiming those guarantees would be unsupported.
+- Final: Ruling: Keep the source assessment and unrelated compensation DOCX out of Git — implementation/documentation are sufficient for the private delivery repository; original local documents remain available.

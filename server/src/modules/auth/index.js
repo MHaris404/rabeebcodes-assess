@@ -36,8 +36,9 @@ export function authModule(db, cfg) {
     return { user, csrfToken: session.csrfToken };
   }
   const router = Router();
+  const registrationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false, skip: () => cfg.NODE_ENV === 'test', handler: (req, res) => res.status(429).json({ error: { code: 'RATE_LIMITED', message: 'Too many account creation attempts. Try again later.', requestId: req.id } }) });
   const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, skipSuccessfulRequests: true, standardHeaders: 'draft-8', legacyHeaders: false, skip: () => cfg.NODE_ENV === 'test', handler: (req, res) => res.status(429).json({ error: { code: 'RATE_LIMITED', message: 'Too many sign-in attempts. Try again later.', requestId: req.id } }) });
-  router.post('/register', limiter, async (req, res) => {
+  router.post('/register', registrationLimiter, async (req, res) => {
     const input = parse(registration, req.body);
     const passwordHash = await bcrypt.hash(input.password, 12);
     const user = await transaction(db, tx => tx.user.create({ data: { name: input.name, email: input.email, passwordHash, role: 'Customer' }, select: userSelect }));
