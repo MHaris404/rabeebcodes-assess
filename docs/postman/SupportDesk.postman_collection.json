@@ -1,0 +1,1041 @@
+{
+  "info": {
+    "_postman_id": "f9a932fe-8eea-401d-85a3-f2d50d6534c3",
+    "name": "SupportDesk API",
+    "description": "Import the local environment, set its password, and run Core workflow as Admin. CSRF token, Agent ID, ticket ID/version and retry keys are captured automatically. Cookie jar must remain enabled. Workflow creates and deletes its own demo ticket; the Registration reference folder is manual. API details are in docs/api.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticketId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticketVersion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticketCreateKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replyKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageCursor",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activityCursor",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Core workflow",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/health/live",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/health/ready",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as selected demo user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Default core workflow requires Admin. Postman stores the HttpOnly session cookie automatically; leave its cookie jar enabled.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Safe user DTO\", () => { pm.expect(json.data.user).not.to.have.property(\"passwordHash\"); });",
+                  "pm.collectionVariables.set(\"csrfToken\", json.data.csrfToken);",
+                  "pm.collectionVariables.set(\"currentUserId\", json.data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No password hash\", () => pm.expect(json.data).not.to.have.property(\"passwordHash\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh CSRF token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/csrf",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"csrfToken\", json.data.csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find demo Agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users?role=Agent&pageSize=100",
+            "description": "Admin only; automatically saves an Agent ID for assignment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"At least one Agent is available\", () => pm.expect(json.data.length).to.be.above(0));",
+                  "if (json.data.length) { pm.collectionVariables.set(\"agentId\", json.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role endpoint example \u2014 keep selected Agent role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{agentId}}/role",
+            "description": "Admin only. This example keeps the current Agent role, making the full workflow safe to repeat. Change role manually when testing role management.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"Agent\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create workflow ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{ticketCreateKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets",
+            "description": "Creates a new demo ticket or recovers the same request after an uncertain response. Keep its key unchanged for retries.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Postman demo ticket\",\n  \"description\": \"A disposable ticket created by the SupportDesk Postman workflow.\",\n  \"category\": \"General\",\n  \"priority\": \"Medium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"ticketCreateKey\")) pm.collectionVariables.set(\"ticketCreateKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List and search tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets?search=Postman%20demo%20ticket&page=1&pageSize=20",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Pagination is present\", () => pm.expect(json.pagination).to.have.keys(\"page\", \"pageSize\", \"total\", \"totalPages\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read workflow ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit workflow ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"High\",\n  \"expectedVersion\": {{ticketVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign workflow ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/assign",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedAgentId\": \"{{agentId}}\",\n  \"expectedVersion\": {{ticketVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Move ticket to In Progress",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In Progress\",\n  \"expectedVersion\": {{ticketVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{replyKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/messages",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Checking this issue from Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"replyKey\")) pm.collectionVariables.set(\"replyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"messageId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry same reply \u2014 verify no duplicate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{replyKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/messages",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Checking this issue from Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Same reply is returned\", () => pm.expect(json.data.id).to.equal(pm.collectionVariables.get(\"messageId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/messages?pageSize=30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"One reply after retry\", () => pm.expect(json.data).to.have.lengthOf(1));",
+                  "pm.collectionVariables.set(\"messageCursor\", json.pagination.nextCursor || \"\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/activity?pageSize=30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"activityCursor\", json.pagination.nextCursor || \"\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve workflow ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}/status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Resolved\",\n  \"expectedVersion\": {{ticketVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ticketId\", json.data.id);",
+                  "pm.collectionVariables.set(\"ticketVersion\", json.data.version);",
+                  "pm.test(\"Ticket has a generated ID\", () => pm.expect(json.data.ticketNumber).to.match(/^SD-\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/dashboard/stats",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Persisted counts\", () => pm.expect(json.data.counts.total).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin operational metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operations/metrics",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the demo workflow ticket",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{ticketVersion}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tickets/{{ticketId}}",
+            "description": "Permanently removes the demo ticket created earlier in this workflow, along with its replies/activity. Run against demo data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));",
+                  "[\"ticketId\", \"ticketVersion\", \"ticketCreateKey\", \"replyKey\", \"messageId\", \"messageCursor\", \"activityCursor\"].forEach(key => pm.collectionVariables.unset(key));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/logout",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.unset(\"csrfToken\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify logged out",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Session denied\", () => pm.expect(json.error.code).to.equal(\"UNAUTHENTICATED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Registration reference (manual)",
+      "item": [
+        {
+          "name": "Register a new Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Manual reference: creates a new Customer and changes the cookie session to that Customer. Run Login again to return to Admin. Public registrations are rate-limited to five attempts per 15 minutes per process.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Customer\",\n  \"email\": \"postman-{{$timestamp}}@example.com\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Safe user DTO\", () => { pm.expect(json.data.user).not.to.have.property(\"passwordHash\"); });",
+                  "pm.collectionVariables.set(\"csrfToken\", json.data.csrfToken);",
+                  "pm.collectionVariables.set(\"currentUserId\", json.data.user.id);",
+                  "pm.test(\"Public registration creates Customer\", () => pm.expect(json.data.user.role).to.equal(\"Customer\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

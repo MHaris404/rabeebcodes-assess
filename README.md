@@ -108,6 +108,7 @@ The assessment leaves general edit/delete rights and staff-created ticket owners
 - Local API readiness: http://localhost:4000/api/health/ready
 - Hosted URLs: pending selection/provisioning of Express-compatible hosting and PostgreSQL.
 - API contract: [endpoint documentation](docs/api.md).
+- Postman: [collection and local environment](docs/postman/README.md), with automatic session/CSRF and ticket-version handling.
 - Deployment, migrations, drain, recovery, and security limits: [operations](docs/operations.md).
 - Desktop and mobile screenshots: [screenshots](docs/screenshots/).
 - Implementation decisions, testing challenges, and remaining work: [implementation notes](docs/implementation-notes.md).
