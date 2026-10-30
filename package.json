@@ -19,5 +19,8 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

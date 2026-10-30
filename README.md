@@ -2,6 +2,10 @@
 
 A customer support workspace built for the Rabeeb Codes full-stack assessment. Customers open conversations, Admins assign work, and Agents reply and resolve tickets. Access is enforced by the API on every ticket and message operation.
 
+**Live app:** https://rabeebcodes-assess.vercel.app
+
+**API readiness:** https://rabeebcodes-assess.vercel.app/api/health/ready
+
 ## Run locally
 
 Requires Node.js 24+, npm, and PostgreSQL 15+.
@@ -106,7 +110,10 @@ The assessment leaves general edit/delete rights and staff-created ticket owners
 - Repository destination: https://github.com/MHaris404/rabeebcodes-assess (private).
 - Local web preview: http://localhost:5173
 - Local API readiness: http://localhost:4000/api/health/ready
-- Hosted URLs: pending selection/provisioning of Express-compatible hosting and PostgreSQL.
+- Hosted frontend: https://rabeebcodes-assess.vercel.app
+- Hosted API base: https://rabeebcodes-assess.vercel.app/api
+- Hosting: Vercel static frontend + Node 24 Express function, with Neon Free PostgreSQL; same-origin cookies/CSRF.
+- Hosted verification: 23 Postman requests/37 assertions and desktop/mobile customer → Admin → Agent workflow. See [deployment evidence](docs/deployment.md).
 - API contract: [endpoint documentation](docs/api.md).
 - Postman: [collection and local environment](docs/postman/README.md), with automatic session/CSRF and ticket-version handling.
 - Deployment, migrations, drain, recovery, and security limits: [operations](docs/operations.md).

@@ -1,0 +1,9 @@
+.local
+.superpowers
+test-results
+playwright-report
+docs
+*.docx
+**/.env
+**/.env.*
+!**/.env.example

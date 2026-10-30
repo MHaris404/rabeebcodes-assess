@@ -1,5 +1,13 @@
 # Operations
 
+## Vercel deployment
+
+Deploy from the repository root using `vercel.json`. It builds `client/dist`, serves SPA routes, and forwards `/api/*` to the shared Express application exported by `api/index.js`. Local development still uses the standalone Node listener. Vercel owns the function process lifecycle, so standalone SIGTERM/drain behavior is not claimed for that deployment mode.
+
+Use a managed PostgreSQL database (the selected marketplace option is Neon Free) with a bounded connection pool. Provisioning may require the account owner to accept the provider's terms. Set production `DATABASE_URL`, a fresh `JWT_SECRET`, exact `CLIENT_ORIGIN` for the production alias, `NODE_ENV=production`, and `COOKIE_SAME_SITE=lax`. The frontend uses same-origin `/api`, keeping cookies first-party. Keep preview deployments restricted until their own allowed origin/database environment is configured.
+
+After provisioning, run production migrations once, seed mock reviewer accounts with a demo-only password, deploy, and verify readiness, SPA reloads, login/logout, authorization, and the three-role workflow against the actual HTTPS origin. `.vercelignore` excludes local secrets, documents, screenshots, and execution artifacts from the upload.
+
 ## Hosting topology
 
 Deploy the Vite static output to a CDN/static host and Express to a persistent Node.js service with managed PostgreSQL. `client/vercel.json` supplies SPA fallback if Vercel is selected. `render.yaml` is a provisioning template for a Render API/database; review provider costs and plan availability before applying. No paid resources have been provisioned by this implementation.

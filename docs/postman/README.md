@@ -4,6 +4,8 @@
 2. Select **SupportDesk Local** and set its `password` to the local demo password: `SupportDesk2026!` (or your configured seed password).
 3. Run the **Core workflow** folder with its default Admin email. Keep Postman's cookie jar enabled.
 
+For the deployed demo, import `SupportDesk.production.postman_environment.json` instead and select **SupportDesk Production Demo**. Set the same documented mock demo password. Its base URL and Origin already point to the live Vercel app.
+
 The workflow logs in, captures CSRF automatically, finds an Agent, creates a demo ticket, updates/assigns it, posts and retries a reply, checks conversation/activity/dashboard/metrics, then deletes that demo ticket and logs out. IDs, ticket versions, and idempotency keys are managed by request scripts. No signing secret or JWT must be copied manually.
 
 Use **Registration reference (manual)** separately to create a new Customer. That request switches the current cookie session to the new Customer; run Login again to return to Admin. Registration is rate-limited.
