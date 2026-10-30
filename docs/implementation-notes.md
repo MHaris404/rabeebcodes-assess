@@ -13,6 +13,7 @@
 - Create/reply attempts now retain an immutable payload/key until an uncertain result is resolved. Fields are disabled during submission and uncertainty; retry recovers that original attempt. Browser tests drop a committed reply response and prove recovery creates exactly one message.
 - Registration has a separate five-attempt/15-minute process limiter that counts successful account creation. Login throttles failed attempts while allowing successful sign-ins. Both require shared infrastructure for fleet-wide enforcement.
 - Matching Prisma CLI/Client are pinned at 6.12.0 after newer CLI tooling introduced dependency advisories. The unused prior copy was removed, dependencies pruned, and the final audit reports zero vulnerabilities. A separate temporary checkout passed `npm ci` and the production build without the workspace's existing dependencies or secrets.
+- Ubuntu CI exposed a platform-specific lockfile defect: generating the lock while macOS dependencies were present omitted Linux optional binaries. The lockfile was regenerated without an installed dependency tree, preserving existing dependency versions and recording all platform variants. CI explicitly includes optional dependencies. A clean install targeting Linux x64 GNU verified the Rollup ELF binary, esbuild, and Tailwind native packages; a separate clean macOS install/build and all 24 API/client tests passed. Actual Linux execution is verified by the GitHub workflow rather than inferred from the macOS tests.
 
 ## Evidence and remaining delivery work
 

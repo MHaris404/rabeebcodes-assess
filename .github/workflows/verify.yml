@@ -30,7 +30,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - name: Install dependencies including platform binaries
+        run: npm ci --include=optional
       - run: npm run db:migrate
       - run: npm test
       - run: npm run build
